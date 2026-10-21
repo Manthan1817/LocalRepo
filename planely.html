@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planly - Live Dashboard (Full 15 Sprints)</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #0f1115; color: #e2e8f0; padding: 40px; display: flex; justify-content: center; }
+        .container { max-width: 1100px; width: 100%; }
+        h1 { font-size: 1.8rem; font-weight: 600; margin-bottom: 30px; }
+        .top-controls { display: flex; gap: 60px; margin-bottom: 40px; }
+        .input-group { display: flex; flex-direction: column; gap: 8px; flex: 1; max-width: 400px; }
+        .input-label { font-size: 0.9rem; font-weight: 500; }
+        .text-input-wrapper { background-color: #16181d; border: 1px solid #2d333b; border-radius: 8px; display: flex; align-items: center; padding: 0 16px; }
+        .text-input { background: transparent; border: none; color: white; padding: 12px 0; width: 100%; font-size: 1rem; outline: none; }
+        .date-selector { display: flex; gap: 10px; margin-top: 8px; }
+        .date-pill { padding: 10px 20px; border-radius: 20px; background-color: transparent; border: 1px solid #2d333b; color: #8b949e; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
+        .date-pill.active { background-color: #21262d; color: white; border-color: #30363d; }
+        .date-pill:hover:not(.active) { border-color: #8b949e; color: white; }
+        h2 { font-size: 1.2rem; font-weight: 500; margin-bottom: 16px; }
+        .sprints-nav { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 16px; scrollbar-width: none; }
+        .sprints-nav::-webkit-scrollbar { display: none; }
+        .sprint-tab { padding: 8px 16px; border-radius: 8px; background-color: transparent; border: 1px solid transparent; color: #8b949e; cursor: pointer; font-size: 0.95rem; white-space: nowrap; }
+        .sprint-tab.active { background-color: #21262d; color: white; border-color: #30363d; }
+        .sprint-tab:hover:not(.active) { background-color: #16181d; color: white; }
+        .content-grid { display: flex; gap: 30px; align-items: flex-start; }
+        .days-list { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+        .day-row-container { background-color: #16181d; border-radius: 12px; overflow: hidden; border: 1px solid transparent; transition: border-color 0.2s; }
+        .day-row-container.open { border-color: #2d333b; }
+        .day-row { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background-color 0.2s; }
+        .day-row:hover { background-color: #1c2128; }
+        .day-left { display: flex; align-items: center; gap: 16px; }
+        .day-number { color: #e2e8f0; font-size: 0.95rem; font-weight: 500; min-width: 50px; }
+        .day-subject { color: #8b949e; font-size: 0.95rem; }
+        .day-right { display: flex; align-items: center; gap: 16px; }
+        .day-time { color: #8b949e; font-size: 0.9rem; }
+        .chevron { color: #8b949e; font-size: 1.2rem; transition: transform 0.3s ease; }
+        .day-row-container.open .chevron { transform: rotate(90deg); }
+        .topics-container { display: none; padding: 0 20px 16px 20px; background-color: #1c2128; border-top: 1px solid #2d333b; }
+        .day-row-container.open .topics-container { display: block; }
+        .topic-label { display: flex; align-items: center; gap: 12px; padding: 12px 0; color: #c9d1d9; font-size: 0.95rem; border-bottom: 1px solid #2d333b; cursor: pointer; }
+        .topic-label:last-child { border-bottom: none; }
+        .topic-label input[type="checkbox"] { width: 18px; height: 18px; accent-color: #2ea043; cursor: pointer; }
+        .completed-text { text-decoration: line-through; color: #8b949e; opacity: 0.7; }
+        .stats-box { width: 320px; background-color: #16181d; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 20px; position: sticky; top: 40px; border: 1px solid #2d333b;}
+        .stat-item { display: flex; justify-content: space-between; color: #8b949e; font-size: 0.9rem; }
+        .stat-value { color: white; font-weight: 500; }
+        .stat-divider { height: 1px; background-color: #2d333b; width: 100%; }
+        .progress-section { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+        .progress-header { display: flex; justify-content: space-between; font-size: 0.95rem; font-weight: 600; color: #fff;}
+        .progress-bar-bg { width: 100%; height: 10px; background-color: #2d333b; border-radius: 5px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background-color: #2ea043; width: 0%; transition: width 0.4s ease; }
+        .highlight { color: #2ea043; font-weight: bold; font-size: 1.1rem; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Finalise your plan & Live Tracking</h1>
+
+        <div class="top-controls">
+            <div class="input-group">
+                <label class="input-label">Plan name</label>
+                <div class="text-input-wrapper">
+                    <input type="text" class="text-input" value="SDE Master Plan">
+                </div>
+            </div>
+            <div class="input-group">
+                <label class="input-label">When do you want to start?</label>
+                <div class="date-selector">
+                    <button class="date-pill active">Today</button>
+                    <button class="date-pill">Tomorrow</button>
+                    <button class="date-pill">Custom</button>
+                </div>
+            </div>
+        </div>
+
+        <h2>Your sprint preview (Click on a day to see & tick topics)</h2>
+
+        <div class="sprints-nav" id="sprints-nav"></div>
+
+        <div class="content-grid">
+            <div class="days-list" id="days-list"></div>
+
+            <div class="stats-box">
+                <div class="progress-section">
+                    <div class="progress-header">
+                        <span>Overall Progress</span>
+                        <span id="progress-text">0%</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <span>Topics Completed:</span>
+                    <span class="stat-value"><span id="completed-topics" class="highlight">0</span> / <span id="total-topics">0</span></span>
+                </div>
+                <div class="stat-item">
+                    <span>Days Remaining:</span>
+                    <span class="stat-value highlight" id="days-remaining">0</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">
+                    <span>Target Role:</span>
+                    <span class="stat-value">Software Engineer</span>
+                </div>
+                <div class="stat-item">
+                    <span>Subjects:</span>
+                    <span class="stat-value" style="text-align:right">DSA, OOPS, OS,<br>CN, DBMS</span>
+                </div>
+                <div class="stat-item">
+                    <span>Total Sprints:</span>
+                    <span class="stat-value">15</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // FULL 15 SPRINT DATA
+        const rawSprintData = {
+            1: [
+                { day: 1, subject: "DSA", time: "2h 15m", topics: ["Array Basics", "Largest Element in Array", "Second Largest Element", "Check if Array is Sorted"] },
+                { day: 2, subject: "DSA", time: "1h 37m", topics: ["Remove Duplicates", "Left Rotate Array by One", "Rotate Array by D places", "Move Zeros to End"] },
+                { day: 3, subject: "DSA", time: "3h 54m", topics: ["Linear Search", "Find missing number in an array", "Max Consecutive Ones", "Find the number that appears once"] },
+                { day: 4, subject: "DSA", time: "2h 32m", topics: ["Longest Subarray with sum K", "Two Sum Problem", "Sort an array of 0s, 1s and 2s"] },
+                { day: 5, subject: "DSA", time: "1h 56m", topics: ["Majority Element", "Kadane's Algorithm", "Print subarray with Max Sum"] },
+                { day: 6, subject: "OOPS", time: "1h 52m", topics: ["Introduction to OOPS", "Classes and Objects", "Constructors & Destructors", "Access Modifiers"] },
+                { day: 7, subject: "OOPS", time: "1h", topics: ["Encapsulation", "Inheritance Types", "Polymorphism (Compile & Run time)"] }
+            ],
+            2: [
+                { day: 1, subject: "DSA", time: "2h 10m", topics: ["Best Time to Buy and Sell Stock", "Rearrange Array Elements by Sign", "Next Permutation"] },
+                { day: 2, subject: "DSA", time: "2h 30m", topics: ["Leaders in an Array", "Longest Consecutive Sequence", "Set Matrix Zeros"] },
+                { day: 3, subject: "DSA", time: "2h 45m", topics: ["Rotate Matrix by 90 degrees", "Spiral Traversal of Matrix", "Count Subarrays with given sum"] },
+                { day: 4, subject: "DSA", time: "3h 15m", topics: ["Pascal's Triangle", "Majority Element (N/3)", "3-Sum Problem"] },
+                { day: 5, subject: "DSA", time: "2h 50m", topics: ["4-Sum Problem", "Merge Overlapping Subintervals", "Merge two Sorted Arrays"] },
+                { day: 6, subject: "DSA", time: "2h 20m", topics: ["Find repeating and missing numbers", "Count Inversions", "Reverse Pairs"] },
+                { day: 7, subject: "DSA", time: "1h 45m", topics: ["Maximum Product Subarray", "Revision of Array Medium/Hard"] }
+            ],
+            3: [
+                { day: 1, subject: "DSA", time: "2h 10m", topics: ["Binary Search Basics", "Lower Bound and Upper Bound", "Search Insert Position"] },
+                { day: 2, subject: "DSA", time: "2h", topics: ["Floor and Ceil in Sorted Array", "Find first and last occurrence", "Count occurrences"] },
+                { day: 3, subject: "DSA", time: "2h 30m", topics: ["Search in Rotated Sorted Array I & II", "Find Minimum in Rotated Sorted Array"] },
+                { day: 4, subject: "DSA", time: "2h", topics: ["Find how many times array is rotated", "Single element in sorted array", "Find peak element"] },
+                { day: 5, subject: "DSA", time: "3h", topics: ["Square Root using BS", "Nth root of M", "Koko Eating Bananas"] },
+                { day: 6, subject: "DSA", time: "2h 45m", topics: ["Min days to make M bouquets", "Smallest divisor given a threshold", "Capacity to Ship Packages"] },
+                { day: 7, subject: "DSA", time: "3h 10m", topics: ["Aggressive Cows", "Book Allocation Problem", "Split Array Largest Sum"] }
+            ],
+            4: [
+                { day: 1, subject: "DSA", time: "2h 20m", topics: ["Search in a 2D Matrix", "Search in Row/Col sorted matrix", "Find Peak Element (2D)"] },
+                { day: 2, subject: "DSA", time: "2h 10m", topics: ["Remove outermost Parentheses", "Reverse words in a String", "Largest odd number in string"] },
+                { day: 3, subject: "DSA", time: "1h 50m", topics: ["Longest Common Prefix", "Isomorphic Strings", "Check if two strings are anagrams"] },
+                { day: 4, subject: "DSA", time: "2h 30m", topics: ["Sort Characters by frequency", "Max Nesting Depth of Parentheses", "Roman to Integer"] },
+                { day: 5, subject: "DSA", time: "1h 40m", topics: ["String to Integer (atoi)", "Count number of substrings", "Longest Palindromic Substring"] },
+                { day: 6, subject: "DSA", time: "2h 15m", topics: ["Introduction to Linked List", "Insert Node in LL", "Delete Node in LL"] },
+                { day: 7, subject: "DSA", time: "2h 5m", topics: ["Find length of LL", "Search an element in LL", "Intro to Doubly Linked List"] }
+            ],
+            5: [
+                { day: 1, subject: "DSA", time: "2h", topics: ["Insert and Delete in DLL", "Reverse a Doubly Linked List"] },
+                { day: 2, subject: "DSA", time: "2h 30m", topics: ["Middle of a Linked List", "Reverse a Linked List", "Detect a loop in LL"] },
+                { day: 3, subject: "DSA", time: "2h 15m", topics: ["Find starting point of loop in LL", "Length of Loop in LL", "Check if LL is palindrome"] },
+                { day: 4, subject: "DSA", time: "2h 45m", topics: ["Odd Even Linked List", "Remove Nth node from back", "Delete middle node"] },
+                { day: 5, subject: "DSA", time: "3h", topics: ["Sort a LL of 0s, 1s, 2s", "Find intersection point of Y LL", "Add 2 numbers as LL"] },
+                { day: 6, subject: "DSA", time: "2h 20m", topics: ["Reverse LL in groups of K", "Rotate a LL", "Clone LL with random and next pointer"] },
+                { day: 7, subject: "DSA", time: "2h", topics: ["Implement Stack using Arrays", "Implement Queue using Arrays", "Stack using Queue"] }
+            ],
+            6: [
+                { day: 1, subject: "DSA", time: "2h", topics: ["Queue using Stack", "Check for Balanced Parentheses", "Min Stack Implementation"] },
+                { day: 2, subject: "DSA", time: "2h 30m", topics: ["Infix, Prefix and Postfix intro", "Next Greater Element", "Next Smaller Element"] },
+                { day: 3, subject: "DSA", time: "3h 15m", topics: ["Trapping Rain Water", "Sum of Subarray Minimums", "Asteroid Collision"] },
+                { day: 4, subject: "DSA", time: "2h 45m", topics: ["Largest Rectangle in Histogram", "Maximal Rectangle", "Sliding Window Maximum"] },
+                { day: 5, subject: "DSA", time: "2h 20m", topics: ["Sliding Window Basics", "Longest Substring Without Repeating Characters"] },
+                { day: 6, subject: "DSA", time: "2h 40m", topics: ["Max Consecutive Ones III", "Fruits into Baskets", "Longest Repeating Character Replacement"] },
+                { day: 7, subject: "DSA", time: "2h 10m", topics: ["Binary Subarrays with sum", "Count number of nice subarrays", "Subarrays with K different integers"] }
+            ],
+            7: [
+                { day: 1, subject: "DSA", time: "1h 50m", topics: ["Binary Tree Representation", "Preorder, Inorder, Postorder Traversals"] },
+                { day: 2, subject: "DSA", time: "2h 20m", topics: ["Level Order Traversal", "Iterative Traversals", "Height of a Binary Tree"] },
+                { day: 3, subject: "DSA", time: "2h 15m", topics: ["Check if BT is Balanced", "Diameter of Binary Tree", "Maximum Path Sum"] },
+                { day: 4, subject: "DSA", time: "2h 40m", topics: ["Check if two trees are identical", "Zig Zag Traversal", "Boundary Traversal"] },
+                { day: 5, subject: "DSA", time: "3h", topics: ["Vertical Order Traversal", "Top View & Bottom View", "Right/Left View"] },
+                { day: 6, subject: "DSA", time: "2h 30m", topics: ["Symmetric Binary Tree", "Root to Node Path", "LCA in Binary Tree"] },
+                { day: 7, subject: "DSA", time: "2h 15m", topics: ["Maximum width of BT", "Check for Children Sum Property", "Nodes at distance K"] }
+            ],
+            8: [
+                { day: 1, subject: "DSA", time: "2h 20m", topics: ["Minimum time to burn a Tree", "Count total Nodes in COMPLETE Tree"] },
+                { day: 2, subject: "DSA", time: "2h", topics: ["Construct BT from Inorder and Preorder/Postorder", "Serialize and Deserialize BT"] },
+                { day: 3, subject: "DSA", time: "1h 50m", topics: ["Graph Representation (Matrix/List)", "Connected Components", "BFS Traversal"] },
+                { day: 4, subject: "DSA", time: "2h 15m", topics: ["DFS Traversal", "Number of Provinces", "Rotting Oranges"] },
+                { day: 5, subject: "DSA", time: "2h 45m", topics: ["Flood Fill Algorithm", "Detect Cycle in Undirected Graph (BFS/DFS)"] },
+                { day: 6, subject: "DSA", time: "2h 30m", topics: ["01 Matrix (Bipartite Graph)", "Surrounded Regions (O/X)", "Number of Enclaves"] },
+                { day: 7, subject: "DSA", time: "3h", topics: ["Word Ladder I & II", "Topo Sort (Kahn's Algorithm)", "Cycle Detection in Directed Graph"] }
+            ],
+            9: [
+                { day: 1, subject: "DSA", time: "2h 29m", topics: ["Binary Search Tree Basics", "Search in a BST", "Find Min/Max in BST"] },
+                { day: 2, subject: "DSA", time: "1h 48m", topics: ["Insert a Node in BST", "Delete a Node in BST", "Kth Smallest Element in BST"] },
+                { day: 3, subject: "DSA + Operating System", time: "3h 59m", topics: ["LCA in BST (DSA)", "OS Introduction", "Types of Operating Systems"] },
+                { day: 4, subject: "Operating System", time: "3h 54m", topics: ["Process Management", "Process States", "Process Control Block (PCB)"] },
+                { day: 5, subject: "Operating System", time: "1h 59m", topics: ["CPU Scheduling Algorithms", "FCFS & SJF", "Round Robin & Priority Scheduling"] },
+                { day: 6, subject: "Operating System", time: "1h 55m", topics: ["Process Synchronization", "Critical Section Problem", "Mutex and Semaphores"] },
+                { day: 7, subject: "Operating System", time: "2h 10m", topics: ["Deadlocks Introduction", "Deadlock Prevention & Avoidance", "Banker's Algorithm"] }
+            ],
+            10: [
+                { day: 1, subject: "Operating System", time: "2h 52m", topics: ["Memory Management", "Contiguous Memory Allocation", "Paging Concept"] },
+                { day: 2, subject: "Operating System", time: "1h 47m", topics: ["Virtual Memory", "Page Replacement Algorithms (FIFO, LRU, Optimal)"] },
+                { day: 3, subject: "Operating System + Computer Networks", time: "4h", topics: ["Disk Scheduling Algorithms (OS)", "Intro to Computer Networks (CN)", "Network Topologies"] },
+                { day: 4, subject: "Computer Networks", time: "3h 56m", topics: ["OSI Reference Model", "TCP/IP Model", "Physical Layer Basics"] },
+                { day: 5, subject: "Computer Networks", time: "1h 53m", topics: ["Data Link Layer", "MAC Addressing", "Error Detection & Correction (CRC)"] },
+                { day: 6, subject: "Computer Networks", time: "1h 55m", topics: ["Network Layer", "IP Addressing (IPv4 vs IPv6)", "Subnetting Basics"] },
+                { day: 7, subject: "Computer Networks", time: "2h 30m", topics: ["Routing Algorithms", "Distance Vector Routing", "Link State Routing"] }
+            ],
+            11: [
+                { day: 1, subject: "Computer Networks", time: "2h 15m", topics: ["Transport Layer Protocols", "TCP Segment Structure", "Flow Control & Congestion Control"] },
+                { day: 2, subject: "Computer Networks", time: "2h 30m", topics: ["UDP Header Structure", "Sockets and Ports", "Multiplexing/Demultiplexing"] },
+                { day: 3, subject: "Computer Networks", time: "2h", topics: ["Application Layer Intro", "HTTP vs HTTPS", "Cookies and Sessions"] },
+                { day: 4, subject: "Computer Networks", time: "2h 45m", topics: ["DNS Hierarchy and Resolution", "SMTP, POP3, IMAP", "FTP and TFTP"] },
+                { day: 5, subject: "Computer Networks", time: "2h 10m", topics: ["Network Security Basics", "Symmetric vs Asymmetric Key Cryptography"] },
+                { day: 6, subject: "Computer Networks", time: "1h 50m", topics: ["Firewalls and Intrusions", "VPNs and IPSec"] },
+                { day: 7, subject: "Computer Networks", time: "2h", topics: ["Revision of CN", "Mock Test / Interview Prep (CN)"] }
+            ],
+            12: [
+                { day: 1, subject: "Computer Networks", time: "2h 45m", topics: ["Advanced Routing (BGP, OSPF)", "ICMP and Ping/Traceroute details"] },
+                { day: 2, subject: "Computer Networks", time: "2h", topics: ["DHCP Process", "NAT (Network Address Translation)"] },
+                { day: 3, subject: "Computer Networks + DBMS", time: "3h 18m", topics: ["ARP and RARP (CN)", "Introduction to DBMS", "File System vs DBMS"] },
+                { day: 4, subject: "DBMS", time: "3h 54m", topics: ["Database Architecture (3-Schema)", "ER Data Models", "Types of Keys (Primary, Foreign, Candidate)"] },
+                { day: 5, subject: "DBMS", time: "2h", topics: ["Relational Algebra", "SQL Basics (DDL, DML, DCL, TCL)"] },
+                { day: 6, subject: "DBMS", time: "1h 46m", topics: ["Joins in SQL (Inner, Left, Right, Full)", "Nested Queries / Subqueries"] },
+                { day: 7, subject: "DBMS", time: "54 min", topics: ["Views in SQL", "Indexes Basics"] }
+            ],
+            13: [
+                { day: 1, subject: "DBMS", time: "2h 15m", topics: ["String Functions in SQL", "Aggregate Functions (SUM, AVG, MIN, MAX)"] },
+                { day: 2, subject: "DBMS", time: "2h 30m", topics: ["GROUP BY and HAVING Clause", "ORDER BY and LIMIT"] },
+                { day: 3, subject: "DBMS", time: "2h", topics: ["Set Operations (UNION, INTERSECT, MINUS)", "Correlated Subqueries"] },
+                { day: 4, subject: "DBMS", time: "3h", topics: ["Stored Procedures", "Triggers in SQL", "Cursors"] },
+                { day: 5, subject: "DBMS", time: "2h 45m", topics: ["Advanced SQL Queries Practice", "LeetCode/HackerRank SQL Questions 1-10"] },
+                { day: 6, subject: "DBMS", time: "2h 15m", topics: ["LeetCode/HackerRank SQL Questions 11-20", "Window Functions Overview"] },
+                { day: 7, subject: "DBMS", time: "1h 30m", topics: ["RANK(), DENSE_RANK(), ROW_NUMBER()", "Partition By Concept"] }
+            ],
+            14: [
+                { day: 1, subject: "DBMS", time: "2h", topics: ["Entity Relationship Diagram to Relational Schema", "Strong and Weak Entities"] },
+                { day: 2, subject: "DBMS", time: "2h 15m", topics: ["Functional Dependencies", "Types of Functional Dependencies", "Closure of a Set of Attributes"] },
+                { day: 3, subject: "DBMS", time: "2h 40m", topics: ["Finding Candidate Keys using FD", "Equivalence of FD sets"] },
+                { day: 4, subject: "DBMS", time: "3h", topics: ["Minimal Cover / Canonical Cover", "Lossless Join Decomposition"] },
+                { day: 5, subject: "DBMS", time: "2h 15m", topics: ["Dependency Preservation", "Anomalies in DBMS (Insert, Update, Delete)"] },
+                { day: 6, subject: "DBMS", time: "2h", topics: ["First Normal Form (1NF)", "Second Normal Form (2NF)", "Partial Dependency"] },
+                { day: 7, subject: "DBMS", time: "1h 50m", topics: ["Third Normal Form (3NF)", "Transitive Dependency", "Boyce-Codd Normal Form (BCNF)"] }
+            ],
+            15: [
+                { day: 1, subject: "DBMS", time: "2h 48m", topics: ["Difference between 3NF and BCNF", "4NF and Multi-valued Dependency"] },
+                { day: 2, subject: "DBMS", time: "1h 48m", topics: ["Transaction Management", "ACID Properties", "States of Transaction"] },
+                { day: 3, subject: "DBMS", time: "4h", topics: ["Concurrency Control", "Conflict & View Serializability", "Lock-Based Protocols (2PL)"] },
+                { day: 4, subject: "DBMS", time: "1h 45m", topics: ["Deadlock Handling in DBMS", "Time-stamp Ordering Protocol"] },
+                { day: 5, subject: "DBMS", time: "2h 15m", topics: ["Database Recovery Techniques", "Log-based Recovery (Deferred & Immediate)"] },
+                { day: 6, subject: "DBMS", time: "1h 30m", topics: ["Advanced Indexing", "B-Trees", "B+ Trees Structure"] },
+                { day: 7, subject: "DBMS", time: "1h 10m", topics: ["Introduction to NoSQL", "MongoDB Basics vs SQL Database", "Revision Complete!"] }
+            ]
+        };
+
+        let appState = {}; 
+        let totalGlobalTopics = 0;
+        let totalGlobalDays = 0;
+
+        function init() {
+            for (const sprint in rawSprintData) {
+                appState[sprint] = [];
+                rawSprintData[sprint].forEach(dayItem => {
+                    totalGlobalDays++;
+                    const newTopics = dayItem.topics.map(t => {
+                        totalGlobalTopics++;
+                        return { name: t, completed: false };
+                    });
+                    appState[sprint].push({ ...dayItem, topics: newTopics });
+                });
+            }
+
+            renderSprintTabs();
+            loadSprint(1); 
+            updateLiveDashboard();
+            
+            document.querySelectorAll('.date-pill').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.date-pill').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+        }
+
+        function renderSprintTabs() {
+            const nav = document.getElementById('sprints-nav');
+            for(let i = 1; i <= 15; i++) {
+                const tab = document.createElement('button');
+                tab.className = `sprint-tab ${i === 1 ? 'active' : ''}`;
+                tab.id = `tab-${i}`;
+                tab.innerText = `Sprint ${i}`;
+                tab.onclick = () => loadSprint(i);
+                nav.appendChild(tab);
+            }
+        }
+
+        function loadSprint(sprintNum) {
+            document.querySelectorAll('.sprint-tab').forEach(t => t.classList.remove('active'));
+            const activeTab = document.getElementById(`tab-${sprintNum}`);
+            if(activeTab) {
+                activeTab.classList.add('active');
+                activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+
+            const list = document.getElementById('days-list');
+            list.innerHTML = '';
+
+            const daysData = appState[sprintNum];
+            if(!daysData) return;
+
+            daysData.forEach((item, dIndex) => {
+                let topicsHTML = '';
+                item.topics.forEach((topicObj, tIndex) => {
+                    topicsHTML += `
+                        <label class="topic-label">
+                            <input type="checkbox" ${topicObj.completed ? 'checked' : ''} onchange="toggleTopic(this, ${sprintNum}, ${dIndex}, ${tIndex})">
+                            <span class="${topicObj.completed ? 'completed-text' : ''}">${topicObj.name}</span>
+                        </label>
+                    `;
+                });
+
+                const container = document.createElement('div');
+                container.className = 'day-row-container';
+                container.innerHTML = `
+                    <div class="day-row" onclick="toggleAccordion(this)">
+                        <div class="day-left">
+                            <span class="day-number">Day ${item.day}</span>
+                            <span class="day-subject">${item.subject}</span>
+                        </div>
+                        <div class="day-right">
+                            <span class="day-time">Est. ${item.time}</span>
+                            <span class="chevron">›</span>
+                        </div>
+                    </div>
+                    <div class="topics-container" onclick="event.stopPropagation()">
+                        ${topicsHTML}
+                    </div>
+                `;
+                list.appendChild(container);
+            });
+        }
+
+        function toggleAccordion(element) {
+            const container = element.parentElement;
+            container.classList.toggle('open');
+        }
+
+        function toggleTopic(checkboxElement, sprintNum, dayIndex, topicIndex) {
+            appState[sprintNum][dayIndex].topics[topicIndex].completed = checkboxElement.checked;
+            const textSpan = checkboxElement.nextElementSibling;
+            if(checkboxElement.checked) textSpan.classList.add('completed-text');
+            else textSpan.classList.remove('completed-text');
+            updateLiveDashboard();
+        }
+
+        function updateLiveDashboard() {
+            let completedTopics = 0;
+            let completedDays = 0;
+
+            for (const sprint in appState) {
+                appState[sprint].forEach(dayItem => {
+                    let allTopicsInDayDone = true;
+                    dayItem.topics.forEach(t => {
+                        if(t.completed) completedTopics++;
+                        else allTopicsInDayDone = false;
+                    });
+                    if(allTopicsInDayDone && dayItem.topics.length > 0) completedDays++;
+                });
+            }
+
+            document.getElementById('completed-topics').innerText = completedTopics;
+            document.getElementById('total-topics').innerText = totalGlobalTopics;
+            document.getElementById('days-remaining').innerText = totalGlobalDays - completedDays;
+
+            let progressPercent = totalGlobalTopics === 0 ? 0 : Math.round((completedTopics / totalGlobalTopics) * 100);
+            document.getElementById('progress-fill').style.width = `${progressPercent}%`;
+            document.getElementById('progress-text').innerText = `${progressPercent}%`;
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
